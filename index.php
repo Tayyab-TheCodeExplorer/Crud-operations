@@ -1,104 +1,61 @@
 <?php
+include("./connect_db/a.php");
 
+$nameerror = "";
+$passerror = "";
 $emailerror = "";
-$passerror ="";
-$submited = "";
-$img = "";
+$imgerror = "";
+$submiterror = "";
 
-print_r($_FILES);
 
-$con = mysqli_connect("localhost", "root", "", "user_db") or die("connection failed");
+if (isset($_POST['submit'])) {
 
-if (isset($_POST['submit'])){
+    print_r($_FILES['img']['tmp_name']);
+    // print_r($_POST);
+    $name = $_POST['name'];
     $email = $_POST['email'];
-    $pass = md5($_POST['pass']);
+    $pass = $_POST['pass'];
+    // echo $name . $email . $pass;
+    if (empty($name)) {
+        $nameerror = "Please Enter Your Name";
+    } elseif (empty($email)) {
+        $emailerror = "Please Enter Your Email";
+    } elseif (empty($pass)) {
+        $passerror = "Please Enter Your Password";
+    } elseif ($_FILES['img']['error'] != 0) {
+        $imgerror = "Please Select Your Image";
+    } else {
+        $img_name = $_FILES['img']['name'];
+        $tmp_name = $_FILES['img']['tmp_name'];
+        $exp = explode(".", $img_name);
+        $ext = strtolower(end($exp));
+        // echo $img_name . $tmp_name . $exp . $ext;
+        $allowed_ext = ["jpg", "jpeg", "png", "gif", "bmp", "tiff", "webp", "svg", "ico", "heic", "heif", "raw", "cr2", "nef", "arw", "dng", "raf", "rw2", "orw", "sr2", "svgz"];
 
-if (empty($email)) {
+        if (in_array($ext, $allowed_ext)) {
+            $new_name = rand(999999, 999999999999) . $img_name . microtime();
+            $move_to = "./images/" . $new_name;
+            if (move_uploaded_file($tmp_name, $move_to)) {
+                $sql = "INSERT INTO `login_tb`(`name`, `email`, `password`, `image`) VALUES ('{$name}','{$email}','{$pass}','{$move_to}')";
+                // print_r($sql);
+                if(mysqli_query($con, $sql)){
+                    $query ="SELECT * FROM `login_tb`  where `email` = '{$email}' and `password` = '{$pass}'";
+                    $data = mysqli_query($con,$query);
+                $res = mysqli_fetch_assoc($data);
+                // $success = print_r($res);
+                session_start();
+                $_SESSION['name']=$res['name'];
+                $_SESSION['email']=$res['email'];
+                $_SESSION['pass']=$res['passsword'];
+                $_SESSION['img']=$res['image'];
 
-$emailerror = "please Enter Your Email....";
-}
-elseif (empty($pass)) {
-  $passerror = "Please Enter Your Password...";
-}
-elseif ($_FILES['img']['error']!=0) {
-  $img = "select image.....";
-  
-}
-else {
-  $img_name = $_FILES['img']['name'];
-  $img_tmp_name = $_FILES['img']['tmp_name'];
-  $end = explode('.', $img_name);
-  $ext = strtolower(end($end));
-  $allowed_ext = ['jpg','jpeg','png'];
-  if (in_array($ext,$allowed_ext)) {
-    $new_name = rand(1000 , 9999999999)."kdjf".microtime().$img_name;
-    $save_img = "./images/".$new_name;
-    if(move_uploaded_file($img_tmp_name,$save_img)){
-$sql = "INSERT INTO `form_inf`(`email`, `password`, `image`) VALUES ('{$email}','{$pass}','{$save_img}')";
-if(mysqli_query($con,$sql)){
-  header('location:show.php');
-
-};
-
+                    header("location: dashboard.php");
+                }
+                
+            }
+        } else {
+            $imgerror = "Invalid Image";
+        }
     }
-  }
-  else {
-    $img = "invalid image";
-  }
-  
-};
+}
 
-    
-
-};
-
-?>
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Bootstrap demo</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-4bw+/aepP/YC94hEpVNVgiZdgIC5+VKNBQNGCHeKRQN+PtmoHDEXuppvnDJzQIu9" crossorigin="anonymous">
-  </head>
-  <body>
-
-
-
-  <div class="container">
-  <form action="<?php echo $_SERVER['PHP_SELF']?>" method="post" enctype="multipart/form-data">
-  <div class="mb-3">
-    <label for="exampleInputEmail1" class="form-label">Email address</label>
-    <input type="email" class="form-control" id="exampleInputEmail1" name="email" aria-describedby="emailHelp">
-    <div id="emailHelp" class="form-text">We'll never share your email with anyone else.</div>
-    <p><?php echo $emailerror ?></p>
-  </div>
-  <div class="mb-3">
-    <label for="exampleInputPassword1" class="form-label">Password</label>
-    <input type="password" class="form-control" name="pass" id="exampleInputPassword1">
-    <p><?php echo $passerror ?></p>
-  </div>
-  <div class="mb-3">
-    <label for="exampleInputPassword1" class="form-label">Choose Your Image.</label>
-    <input type="file" class="form-control" name="img" id="exampleInputPassword1">
-    <p><?php echo $img ?></p>
-  </div>
-
-  <button type="submit" name="submit" class="btn btn-primary">Submit</button>
-  <p><?php echo $submited ?></p>
-</form>
-</div>
-
-
-
-
-
-
-
-
-
-
-<script src="main.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js" integrity="sha384-HwwvtgBNo3bZJJLYd8oVXjrBZt8cqVSpeBNS5n7C8IVInixGAoxmnlMuBnhbgrkm" crossorigin="anonymous"></script>
-  </body>
-</html>

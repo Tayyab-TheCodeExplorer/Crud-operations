@@ -1,120 +1,67 @@
 <?php
+include("./connect_db/a.php");
 
-$emailerror = "";
+$nameerror = "";
 $passerror = "";
-$submited = "";
-$img = "";
-
-$con = mysqli_connect("localhost", "root", "", "user_db") or die("connection failed");
-
-
-if (isset($_GET['edid'])) {
-    $id = $_GET['edid'];
-    // echo $id;
-
-    $sql = "SELECT * FROM `form_inf` where `id`=$id";
-    $result = mysqli_query($con, $sql);
-
-    if (mysqli_num_rows($result) > 0) {
-        $data = mysqli_fetch_assoc($result);
-        print_r($data) ;
-        $id = $data['id'];
-        $email = $data['email'];
-        $password = $data['password'];
-
-    }
-};
+$emailerror = "";
+$imgerror = "";
+$submiterror = "";
 
 
 if (isset($_POST['submit'])) {
-    print_r($_POST);
-    $u_id = $_POST['id'];
-    $u_email = $_POST['email'];
-    $u_pass = md5($_POST['pass']);
 
-    if (empty($u_email)) {
-        $email = "";
-        $password = "";
-        $emailerror = "please Enter Your Email....";
-    } elseif (empty($u_pass)) {
-        $password = "";
-        $email = "";
-        $passerror = "Please Enter Your Password...";
+    print_r($_FILES['img']['tmp_name']);
+    // print_r($_POST);
+    $id = $_POST['id'];
+    $img_path = $_POST['img_path'];
+    $name = $_POST['name'];
+    $email = $_POST['email'];
+    $pass = $_POST['pass'];
+    // echo $name . $email . $pass;
+    if (empty($name)) {
+        $nameerror = "Please Enter Your Name";
+    } elseif (empty($email)) {
+        $emailerror = "Please Enter Your Email";
+    } elseif (empty($pass)) {
+        $passerror = "Please Enter Your Password";
     } elseif ($_FILES['img']['error'] != 0) {
-        $password = "";
-        $email = "";
-        $img = "select image.....";
+        $imgerror = "Please Select Your Image";
     } else {
         $img_name = $_FILES['img']['name'];
-        $img_tmp_name = $_FILES['img']['tmp_name'];
-        $new_name = rand(1000, 9999999999) . "kdjf" . microtime() . $img_name;
-        $save_img = "./images/" . $new_name;
-        move_uploaded_file($img_tmp_name, $save_img);
-        
-        $update_q = "UPDATE `form_inf` SET `email`='$u_email', `password`='$u_pass', `image`='$save_img' WHERE `id`=$u_id";
-        $u_insert = mysqli_query($con,$update_q);
-        if ($u_insert) {
-            header("location:show.php");
+        $tmp_name = $_FILES['img']['tmp_name'];
+        $exp = explode(".", $img_name);
+        $ext = strtolower(end($exp));
+        // echo $img_name . $tmp_name . $exp . $ext;
+        $allowed_ext = ["jpg", "jpeg", "png", "gif", "bmp", "tiff", "webp", "svg", "ico", "heic", "heif", "raw", "cr2", "nef", "arw", "dng", "raf", "rw2", "orw", "sr2", "svgz"];
+
+        if (in_array($ext, $allowed_ext)) {
+            $new_name = rand(999999, 999999999999) . $img_name . microtime();
+            $move_to = "./images/" . $new_name;
+            if (move_uploaded_file($tmp_name, $move_to)) {
+                $sql = "UPDATE `login_tb` SET `name`='{$name}',`email`='{$email}',`password`='{$pass}',`image`='{$move_to}' WHERE `id`=$id";
+                // print_r($sql);
+                if(mysqli_query($con, $sql)){
+                    unlink($img_path);
+                        $query ="SELECT * FROM `login_tb`  where `email` = '{$email}' and `password` = '{$pass}'";
+                        $data = mysqli_query($con,$query);
+                    $res = mysqli_fetch_assoc($data);
+                    // $success = print_r($res);
+                    session_start();
+                    $_SESSION['name']=$res['name'];
+                    $_SESSION['email']=$res['email'];
+                    $_SESSION['pass']=$res['passsword'];
+                    $_SESSION['img']=$res['image'];
+    
+                        header("location: dashboard.php");
+                    }
+                
+                
+            }
+        } else {
+            $imgerror = "Invalid Image";
         }
-        
     }
-};
+}
+
 
 ?>
-<!doctype html>
-<html lang="en">
-
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Bootstrap demo</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-4bw+/aepP/YC94hEpVNVgiZdgIC5+VKNBQNGCHeKRQN+PtmoHDEXuppvnDJzQIu9" crossorigin="anonymous">
-</head>
-
-<body>
-
-
-
-    <div class="container">
-        <form action="update.php" method="post" enctype="multipart/form-data">
-        <input type="hidden" value="X">
-    <h1>
-    <input type="text" value="<?php echo $id ?>">
-
-    </h1>
-            <div class="mb-3">
-                <label for="exampleInputEmail1" class="form-label">Email address</label>
-                <input type="email" value="<?php echo $email ?>" class="form-control" id="exampleInputEmail1" name="email" aria-describedby="emailHelp">
-                <div id="emailHelp" class="form-text">We'll never share your email with anyone else.</div>
-                <p><?php echo $emailerror ?></p>
-            </div>
-            <div class="mb-3">
-                <label for="exampleInputPassword1" class="form-label">Password</label>
-                <input type="password" value="<?php echo $password ?>" class="form-control" name="pass" id="exampleInputPassword1">
-                <p><?php echo $passerror ?></p>
-            </div>
-            <div class="mb-3">
-                <label for="exampleInputPassword1" class="form-label">Choose Your Image.</label>
-                <input type="file" class="form-control" name="img" id="exampleInputPassword1">
-                <p><?php echo $img ?></p>
-            </div>
-                <input type="submit" name="submit" value="Update">
-            <!-- <button type="submit" name="update" class="btn btn-primary"></button> -->
-            <p><?php echo $submited ?></p>
-        </form>
-    </div>
-
-
-
-
-
-
-
-
-
-
-    <script src="main.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js" integrity="sha384-HwwvtgBNo3bZJJLYd8oVXjrBZt8cqVSpeBNS5n7C8IVInixGAoxmnlMuBnhbgrkm" crossorigin="anonymous"></script>
-</body>
-
-</html>
